@@ -110,7 +110,7 @@ int main(int argc, char* argv[]) {
         }
 
         for(i=0; i<numfds; ++i) {
-            if(FD_ISSET(fds[i], &rfds)) {
+            if(fds[i]!=-1 && FD_ISSET(fds[i], &rfds)) {
                 int j;
                 int offset = bufpointers[i];
                 char* buffer = buffers[i];
@@ -164,6 +164,7 @@ int main(int argc, char* argv[]) {
                  *    ^                         ^            ^        ^             ^
                  *    0                         offset       offset+j offset+ret   bufsize
                  */
+
 
                 /* Scan new data for newlines */
                 for(j=ret-1; j!=-1; --j) {
