@@ -71,7 +71,7 @@ int main(int argc, char* argv[]) {
 
     if (argc <= 1) {
         fprintf(stderr, "Usage: fdlinecombine fd1 fd2 ... fdN\n");
-        return 1;
+        return 0; /* No fds (therefore no output) is correct degenerate case */
     }
 
     numfds = argc-1;
