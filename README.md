@@ -1,4 +1,6 @@
-Multiplex multiple input streams into stdout using \n as separators
+Multiplex multiple input streams into stdout using \n as separators.
+
+It is attempt to make a program that Does One Thing, But Does It Well.
 
 For example,
 
@@ -15,7 +17,8 @@ should produce one of:
 
 , but never "qqwww\nqee\ne\n" or like that.
 
-The program should handle very long lines (storing them in memory), short reads, etc.
+The program should handle very long lines (storing them in memory), short reads, memory outage. In case of memory outage it closes the problematic file descriptor.
+
 The program dynamically shrinks and enlarges buffers as line gets longer (or many bytes available at once)
 
 In case of only short lines the program should use little memory:
