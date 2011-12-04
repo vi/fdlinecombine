@@ -12,8 +12,8 @@
 #include <errno.h>
 #include <string.h>
 
-//#define dprintf fprintf
-#define dprintf(...)
+//#define dbgprintf fprintf
+#define dbgprintf(...)
 
 #define MAXFD 1024
 
@@ -116,7 +116,7 @@ int main(int argc, char* argv[]) {
                     if (errno == EAGAIN || errno == EINTR) {
                         continue;
                     }
-                    dprintf(stderr, "fd %d failed\n", fds[i]);
+                    dbgprintf(stderr, "fd %d failed\n", fds[i]);
                     closefd(i);
                     continue;
                 } else
@@ -133,7 +133,7 @@ int main(int argc, char* argv[]) {
                     /* Don't enlarge buffer just to read more than megabyte chunks */
                     /* Also don't enlarge buffer here upon the first request - enlarge if it is trend */
                     if(ret < 1024*1024 && little_data_hyster[i]<-3) {
-                        dprintf(stderr, "Much data: enlarging buffer from %d to %d\n", bufsizes[i], bufsizes[i]*2);
+                        dbgprintf(stderr, "Much data: enlarging buffer from %d to %d\n", bufsizes[i], bufsizes[i]*2);
                         buffer = realloc_buffer(i, bufsizes[i]*2); 
                     }
                 } else {
@@ -145,7 +145,7 @@ int main(int argc, char* argv[]) {
                     if (offset < DEFAULT_READ_SIZE) { // Don't shrink if it is just a looong line
                         ++little_data_hyster[i];
                         if(little_data_hyster[i]>5) { // Don't shink-grow-shink-grow the buffer rapidly
-                            dprintf(stderr, "Little data: shrinking buffer from %d to %d\n", 
+                            dbgprintf(stderr, "Little data: shrinking buffer from %d to %d\n", 
                                     bufsizes[i], offset+ret+DEFAULT_READ_SIZE);
                             buffer = realloc_buffer(i, offset+ret+DEFAULT_READ_SIZE); 
                         }
@@ -181,7 +181,7 @@ int main(int argc, char* argv[]) {
                  *     (used if too long lines)
                  */
                 if(bufsizes[i] - offset < DEFAULT_READ_SIZE && bufsizes[i]>0) {
-                    dprintf(stderr, "Long line: enlarging buffer from %d to %d\n", bufsizes[i], bufsizes[i]*2);
+                    dbgprintf(stderr, "Long line: enlarging buffer from %d to %d\n", bufsizes[i], bufsizes[i]*2);
                     buffer = realloc_buffer(i, bufsizes[i]*2); 
                 }
 
