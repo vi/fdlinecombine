@@ -37,27 +37,32 @@ void closefd(int index) {
     fds[index]=-1;
 }
 
-char* realloc_buffer(int i, int newsize) {
+char* realloc_buffer(int i, int newsize, int obligatory) {
     char* buffer;
-    bufsizes[i]=newsize;
     
     if(newsize<DEFAULT_READ_SIZE) {
         /* Integer overflow? */
         buffer=NULL;
     } else {
-        buffer = (char*) realloc(buffers[i], bufsizes[i]);
+        buffer = (char*) realloc(buffers[i], newsize);
     }
 
     if(!buffer) {
-        fprintf(stderr, "Out of memory on fd %d\n", fds[i]);
-        fflush(stderr);
+        if(obligatory) {
+            fprintf(stderr, "Out of memory on fd %d\n", fds[i]);
+            fflush(stderr);
         
-        /* refusing to reallocate, returning the old buffer */
+            /* refusing to reallocate, returning the old buffer */
         
-        bufsizes[i]=-1;
+            bufsizes[i]=-1;
+        } else {
+            /* Can't reallocate, but don't really need to. Just leave the buffer as it was. */
+        }
     } else {
         buffers[i] = buffer;
+        bufsizes[i]=newsize;
     }
+
     little_data_hyster[i]=0;
     return buffers[i];
 }
@@ -138,7 +143,7 @@ int main(int argc, char* argv[]) {
                     /* Also don't enlarge buffer here upon the first request - enlarge if it is trend */
                     if(ret < 1024*1024 && little_data_hyster[i]<-3) {
                         dbgprintf(stderr, "Much data: enlarging buffer from %d to %d\n", bufsizes[i], bufsizes[i]*2);
-                        buffer = realloc_buffer(i, bufsizes[i]*2); 
+                        buffer = realloc_buffer(i, bufsizes[i]*2, 0); 
                     }
                 } else {
                     if (little_data_hyster[i]<0) little_data_hyster[i]=0;
@@ -151,7 +156,7 @@ int main(int argc, char* argv[]) {
                         if(little_data_hyster[i]>5) { // Don't shink-grow-shink-grow the buffer rapidly
                             dbgprintf(stderr, "Little data: shrinking buffer from %d to %d\n", 
                                     bufsizes[i], offset+ret+DEFAULT_READ_SIZE);
-                            buffer = realloc_buffer(i, offset+ret+DEFAULT_READ_SIZE); 
+                            buffer = realloc_buffer(i, offset+ret+DEFAULT_READ_SIZE, 0); 
                         }
                     }
                 } else {
@@ -187,7 +192,7 @@ int main(int argc, char* argv[]) {
                  */
                 if(bufsizes[i] - offset < DEFAULT_READ_SIZE && bufsizes[i]>0) {
                     dbgprintf(stderr, "Long line: enlarging buffer from %d to %d\n", bufsizes[i], bufsizes[i]*2);
-                    buffer = realloc_buffer(i, bufsizes[i]*2); 
+                    buffer = realloc_buffer(i, bufsizes[i]*2, 1); 
                 }
 
                 if (bufsizes[i]==-1) {
