@@ -2,3 +2,5 @@ out
 *.o
 fdlinecombine
 fdlinecombine_static
+out
+out.sample

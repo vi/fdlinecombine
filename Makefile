@@ -5,3 +5,7 @@ fdlinecombine: *.c
 
 fdlinecombine_static: *.c
 		musl-gcc -O2 *.c -o fdlinecombine_static
+
+.PHONY: test
+test: fdlinecombine
+		./test.sh
