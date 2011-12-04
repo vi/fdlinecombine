@@ -83,6 +83,10 @@ int main(int argc, char* argv[]) {
 
     for(i=0; i<numfds; ++i) {
         buffers[i] = (char*) malloc(DEFAULT_READ_SIZE);
+        if (!buffers[i]) {
+            perror("malloc");
+            return 1;
+        }
         bufsizes[i] = DEFAULT_READ_SIZE;
         bufpointers[i] = 0;
     }
