@@ -38,10 +38,16 @@ struct fdinfo* fds;
 int num_active_fds;
 int numfds;
 fd_set rfds;
+int no_chopped_data;
 
 void closefd(struct fdinfo* f) {
     close(f->fd);
     FD_CLR(f->fd, &rfds);
+    if(f->offset && !no_chopped_data) {
+        /* Data without trailing end-of-line remaining. Flush them and add end-of-line ourselves. */
+        fwrite(f->buffer, 1, f->offset, stdout);
+        fwrite(separator, 1, separator_length, stdout);
+    }
     free(f->buffer);
     --num_active_fds;
     f->fd = -1;
@@ -125,6 +131,8 @@ int main(int argc, char* argv[]) {
     if(sepenv) {
         read_separator(sepenv);
     }
+
+    no_chopped_data = getenv("NO_CHOPPED_DATA") ? 1 : 0;
 
     if (argc <= 1) {
         fprintf(stderr, "Usage: fdlinecombine fd1 fd2 ... fdN\n");
