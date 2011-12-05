@@ -135,7 +135,22 @@ int main(int argc, char* argv[]) {
     no_chopped_data = getenv("NO_CHOPPED_DATA") ? 1 : 0;
 
     if (argc <= 1) {
-        fprintf(stderr, "Usage: fdlinecombine fd1 fd2 ... fdN\n");
+        fprintf(stderr, 
+                "Usage: fdlinecombine fd1 fd2 ... fdN\n"
+                "    Read multiple input file streams and multiplex them into stdout\n"
+                "\n"
+                "    Environment variables:\n"
+                "    SEPARATOR - fd to read separator from (default separator is single newline)\n"
+                "    NO_CHOPPED_DATA - if set, don't output trailing line without separator at the end\n"
+                "    \n"
+                "    Advanced example (bash):\n"
+                "    SEPARATOR=10   fdlinecombine 0 5 6  \\\n"
+                "           5< <(nc -lp 9979 < /dev/null)   \\\n"
+                "           6< <(perl -e '$|=1; print \"TIMER\\n---\\n\" and sleep 2 while true' < /dev/null) \\\n"
+                "           10< <(printf -- '\\n---\\n') > out \n"
+                "    This will transfer data from stdin, opened TCP port and periodic timer\n"
+                "    to file \"out\" using \"---\" line as separator.\n"
+                );
         return 0; /* No fds (therefore no output) is correct degenerate case */
     }
 
