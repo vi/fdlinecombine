@@ -77,12 +77,54 @@ char* realloc_buffer(struct fdinfo* f, int newsize, int obligatory) {
     return f->buffer;
 }
 
+/* if SEPARATOR environment variable is set than read that file handle for line separator value */
+void read_separator(const char* sepenv) {
+    int fd;
+    int ret;
+    if(!sscanf(sepenv, "%i", &fd)) {
+        fprintf(stderr, "SEPARATOR environment variable should be number - \n"
+                "    a filehandle to read separator value from\n");
+        exit(2);
+    }
+    FILE* f = fdopen(fd, "r");
+    if(!f) {
+        perror("fdopen");
+        exit(1);
+    }
+    separator = (char*) malloc(1024);
+    if(!separator) {
+        perror("malloc");
+        exit(1);
+    }
+    ret = fread(separator, 1, 1024, f);
+    separator_length = ret;
+    if(ret==1024) {
+        separator = (char*) realloc(separator, 65500);
+        if(!separator) {
+            perror("realloc");
+            exit(1);
+        }
+        ret = fread(separator+1024, 1, 65500-1024, f);
+        if(ret == 65500-1024) {
+            fprintf(stderr, "Separator is too long. Maximum separator size is 65499 bytes.");
+            exit(3);
+        }
+        separator_length+=ret;
+    }
+    fclose(f);
+}
+
 int main(int argc, char* argv[]) {
 
     int i;
     int sret;
     ssize_t ret;
     int maxfd;
+
+    const char* sepenv = getenv("SEPARATOR");
+    if(sepenv) {
+        read_separator(sepenv);
+    }
 
     if (argc <= 1) {
         fprintf(stderr, "Usage: fdlinecombine fd1 fd2 ... fdN\n");
@@ -99,7 +141,10 @@ int main(int argc, char* argv[]) {
 
     for(i=1; i<argc; ++i) {
         struct fdinfo* f = fds+(i-1);
-        f->fd = atoi(argv[i]);
+        if(!sscanf(argv[i], "%i", &f->fd)) {
+            fprintf(stderr, "All arguments must be numbers - filehandles to read from\n");
+            return 2;
+        }
         f->buffer = (char*) malloc(DEFAULT_READ_SIZE);
         if (!f->buffer) {
             perror("malloc");
@@ -224,6 +269,8 @@ int main(int argc, char* argv[]) {
         if (num_active_fds==0) return 0; /* All inputs finished */
     } /* main loop */
 
-
     free(fds);
+    if(sepenv) {
+        free(separator);
+    }
 }
