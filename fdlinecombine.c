@@ -19,7 +19,9 @@
 #define MAXFD 1024
 
 #define DEFAULT_READ_SIZE 4096
-#define SEPARATOR '\n'
+
+char* separator="\n";
+size_t separator_length = 1;
 
 
 struct fdinfo {
@@ -179,25 +181,27 @@ int main(int argc, char* argv[]) {
                 if(f->little_data_hyster>0) f->little_data_hyster=0;
             }
 
-            /*
-             *        "debt"                newly_received_data   free_buffer
-             *    SSSSSSSSSSSSSSSSSSSSSSSSSSNNNNNNNNNNNNN\nNNNNNNN--------------
-             *    ^                         ^            ^        ^             ^
-             *    0                         offset       offset+j offset+ret   bufsize
-             */
+/*
+ *     "debt"                newly_received_data          free_buffer
+ * SSSSSSSSSSSSSSSSSSSSSSSSSSNNNNNNNNNNNNNseparatorNNNNNNN--------------
+ * ^                         ^            ^        ^      ^             ^
+ * 0                         offset       offset+j |      offset+ret   bufsize
+ *                                                 |
+ *                                                 offset+j+separator_length
+ */
 
 
             /* Scan new data for newlines */
-            for(j=ret-1; j!=-1; --j) {
-                if (buffer[offset+j] == SEPARATOR) {
-                    fwrite(buffer, 1, offset+j+1, stdout);
+            for(j=ret-separator_length; j!=-separator_length; --j) {
+                if (!memcmp(buffer+offset+j, separator, separator_length)) {
+                    fwrite(buffer, 1, offset+j+separator_length, stdout);
                     fflush(stdout);
-                    memmove(buffer, buffer+offset+j+1, ret-j-1);
-                    f->offset = offset = ret-j-1;
+                    memmove(buffer, buffer+offset+j+separator_length, ret-j-separator_length);
+                    f->offset = offset = ret-j-separator_length;
                     break;
                 }
             }
-            if(j==-1) {
+            if(j==-separator_length) {
                 /* No newline in newly received data */
                 offset+=ret;
                 f->offset = offset;
