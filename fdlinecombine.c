@@ -21,7 +21,7 @@
 #define DEFAULT_READ_SIZE 4096
 
 char* separator="\n";
-size_t separator_length = 1;
+int separator_length = 1;
 
 
 struct fdinfo {
@@ -83,6 +83,12 @@ char* realloc_buffer(struct fdinfo* f, int newsize, int obligatory) {
     return f->buffer;
 }
 
+void write_and_move_tail(struct fdinfo* f, int length, int tail_length) {
+    fwrite(f->buffer, 1, length, stdout);
+    memmove(f->buffer, f->buffer+length, tail_length);
+    f->offset = tail_length;
+}
+
 /* if SEPARATOR environment variable is set than read that file handle for line separator value */
 void read_separator(const char* sepenv) {
     int fd;
@@ -124,7 +130,7 @@ int main(int argc, char* argv[]) {
 
     int i;
     int sret;
-    ssize_t ret;
+    int ret;
     int maxfd;
 
     const char* sepenv = getenv("SEPARATOR");
@@ -259,20 +265,51 @@ int main(int argc, char* argv[]) {
  */
 
 
-            /* Scan new data for newlines */
-            for(j=ret-separator_length; j!=-separator_length; --j) {
-                if (!memcmp(buffer+offset+j, separator, separator_length)) {
-                    fwrite(buffer, 1, offset+j+separator_length, stdout);
-                    fflush(stdout);
-                    memmove(buffer, buffer+offset+j+separator_length, ret-j-separator_length);
-                    f->offset = offset = ret-j-separator_length;
-                    break;
+            /* Scan new data for newlines. Two implementations: fast (for single-character separator) and safe */
+            if (separator_length==1) {
+                /* use latest possible separator */
+                for(j=ret-1; j!=-1; --j) {
+                    if (buffer[offset+j]==*separator) {
+                        write_and_move_tail(f, offset+j+separator_length, ret-j-separator_length);
+                        offset = f->offset;
+                        buffer = f->buffer;
+                        fflush(stdout);
+                        break;
+                    }
                 }
-            }
-            if(j==-separator_length) {
-                /* No newline in newly received data */
-                offset+=ret;
-                f->offset = offset;
+                if(j==-1) {
+                    /* No newline in newly received data */
+                    offset+=ret;
+                    f->offset = offset;
+                }
+            } else {
+                /* use earliest possible separator, repeat until not found */
+                int found_flag=0;
+                for(j=-separator_length+1; j<=(ret-separator_length); ++j) {
+                    if(offset+j<0) continue;
+                    if (!memcmp(buffer+offset+j, separator, separator_length)) {
+                        write_and_move_tail(f, offset+j+separator_length, ret-j-separator_length);
+                        buffer =  f->buffer;
+                        offset = f->offset;
+                        found_flag=1;
+                        break;
+                    }
+                }
+                if(found_flag) {
+                    for(j=0; j<=offset-separator_length; ++j) {
+                        if (!memcmp(buffer+j, separator, separator_length)) {
+                            write_and_move_tail(f, j+separator_length, offset-separator_length-j);
+                            buffer =  f->buffer;
+                            offset = f->offset;
+                            j=0;
+                        }
+                    }
+                }
+                if(found_flag) {
+                    fflush(stdout);
+                } else {
+                    f->offset = offset+=ret;
+                }
             }
 
             /* enlarge buffer if we don't have space to read more data
