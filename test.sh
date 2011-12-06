@@ -57,6 +57,32 @@ for((i=0; i<10; ++i)) {
     sort out | cmp out.sample -
 }
 
+echo Separator and chopped data test
+cat > out.sample <<\EOF
+ 589828 
+ 65536 asT
+ 65536 cvb
+ 65536 ghj
+ 1 nm
+ 65535 nmzx
+ 1 qwerty
+ 1 uioppoi
+ 65535 uioppoiqwerty
+ 65536 YYUdf
+ 1 zx
+EOF
+for((i=0; i<5; ++i)) {
+
+    SEPARATOR=10 ./fdlinecombine  6 5 7 \
+        5< <( sleep 0; perl -e 'print "qwerty00uioppoi"x65536' ) \
+        6< <( sleep 0; perl -e 'print "0asT000YYUdf0ghj0"x65536' ) \
+        7< <( sleep 0; perl -e 'print "zx00cvb00000nm"x65536' ) \
+        10< <( printf '00' ) \
+        > out;
+
+    cat out | tr '0' '\n' | sort | uniq -c | perl -pe 's/^\s+/ /' | diff -u out.sample -
+}
+
 echo "Long line test"
 echo "    (slow, requires minimum 120M of memory + 120M of disk space)"
 
@@ -70,7 +96,7 @@ for((i=1; i<=2; ++i)) {
         7< <( sleep 0; perl -e 'print "2\n" foreach 1..(35*1024*1024)' ) \
         > out;
 
-    uniq -c out | perl -ne '/^\s*(\d+)\s+0$/ and $z+=$1 and next; /^\s*(\d+)\s+2$/ and $t+=$1 and next; /\s*(\d+)\s+(1+)/ and $o+=$1 and ($on=length $2) and next; print "fail: $_"; END { print "$z $o($on) $t\n" }' | cmp out.sample -
+    LANG=C uniq -c out | perl -ne '/^\s*(\d+)\s+0$/ and $z+=$1 and next; /^\s*(\d+)\s+2$/ and $t+=$1 and next; /\s*(\d+)\s+(1+)/ and $o+=$1 and ($on=length $2) and next; print "fail: $_"; END { print "$z $o($on) $t\n" }' | cmp out.sample -
 }
 
 rm out.sample out
