@@ -89,14 +89,21 @@ void write_and_move_tail(struct fdinfo* f, int length, int tail_length) {
     f->offset = tail_length;
 }
 
-/* if SEPARATOR environment variable is set than read that file handle for line separator value */
+/* if SEPARATOR environment variable is set than read that file handle (or name) for line separator value */
 void read_separator(const char* sepenv) {
     int fd;
     int ret;
     if(!sscanf(sepenv, "%i", &fd)) {
-        fprintf(stderr, "SEPARATOR environment variable should be number - \n"
-                "    a filehandle to read separator value from\n");
-        exit(2);
+        open_again:
+        fd = open(sepenv, O_RDONLY, 0022);
+        if(fd == -1) {
+            if ( errno==EINTR || errno==EAGAIN ) goto open_again;
+            fprintf(stderr, "%s ", sepenv);
+            perror("open");
+            fprintf(stderr, "SEPARATOR environment variable should be \n"
+                    "    name of file or file descriptor to read separator value from\n");
+            exit(2);
+        }
     }
     FILE* f = fdopen(fd, "r");
     if(!f) {
@@ -143,16 +150,17 @@ int main(int argc, char* argv[]) {
     if (argc <= 1) {
         fprintf(stderr, 
                 "Usage: fdlinecombine fd1 fd2 ... fdN\n"
-                "    Read multiple input file streams and multiplex them into stdout\n"
+                "    Read multiple input streams and multiplex them into stdout\n"
+                "    Parameters should be file descriptor numbers or file names\n"
                 "\n"
                 "    Environment variables:\n"
-                "    SEPARATOR - fd to read separator from (default separator is single newline)\n"
+                "    SEPARATOR - fd number of file name to read separator from (default separator is single newline)\n"
                 "    NO_CHOPPED_DATA - if set, don't output trailing line without separator at the end\n"
                 "    \n"
                 "    Advanced example (bash):\n"
-                "    SEPARATOR=10   fdlinecombine 0 5 6  \\\n"
+                "    SEPARATOR=10   ./fdlinecombine 0 5 6 <(echo HEADER; echo ---) \\\n"
                 "           5< <(nc -lp 9979 < /dev/null)   \\\n"
-                "           6< <(perl -e '$|=1; print \"TIMER\\n---\\n\" and sleep 2 while true' < /dev/null) \\\n"
+                "           6< <(perl -e '$|=1; sleep 2 and print \"TIMER\\n---\\n\" while true' < /dev/null) \\\n"
                 "           10< <(printf -- '\\n---\\n') > out \n"
                 "    This will transfer data from stdin, opened TCP port and periodic timer\n"
                 "    to file \"out\" using \"---\" line as separator.\n"
@@ -171,8 +179,15 @@ int main(int argc, char* argv[]) {
     for(i=1; i<argc; ++i) {
         struct fdinfo* f = fds+(i-1);
         if(!sscanf(argv[i], "%i", &f->fd)) {
-            fprintf(stderr, "All arguments must be numbers - filehandles to read from\n");
-            return 2;
+            open_again:
+            f->fd = open(argv[i], O_RDONLY, 0022);
+            if(f->fd == -1) {
+                if ( errno==EINTR || errno==EAGAIN ) goto open_again;
+                fprintf(stderr, "%s ", argv[i]);
+                perror("open");
+                fprintf(stderr, "All arguments must be file descriptor numbers or file names\n");
+                return 2;
+            }
         }
         f->buffer = (char*) malloc(DEFAULT_READ_SIZE);
         if (!f->buffer) {

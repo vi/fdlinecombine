@@ -73,11 +73,10 @@ cat > out.sample <<\EOF
 EOF
 for((i=0; i<5; ++i)) {
 
-    SEPARATOR=10 ./fdlinecombine  6 5 7 \
+    SEPARATOR=<(printf '00') ./fdlinecombine  6 5 7 \
         5< <( sleep 0; perl -e 'print "qwerty00uioppoi"x65536' ) \
         6< <( sleep 0; perl -e 'print "0asT000YYUdf0ghj0"x65536' ) \
         7< <( sleep 0; perl -e 'print "zx00cvb00000nm"x65536' ) \
-        10< <( printf '00' ) \
         > out;
 
     cat out | tr '0' '\n' | sort | uniq -c | perl -pe 's/^\s+/ /' | diff -u out.sample -
