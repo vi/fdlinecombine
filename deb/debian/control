@@ -1,0 +1,11 @@
+Source: fdlinecombine
+Section: utils
+Priority: extra
+Maintainer: Vitaly "_Vi" Shukela <vi0oss@gmail.com>
+Standards-Version: 3.9.3
+Homepage: https://github.com/vi/fdlinecombine
+
+Package: fdlinecombine
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libc6
+Description: Merge multiple input streams into one output linewise
