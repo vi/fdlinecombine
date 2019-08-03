@@ -1,0 +1,92 @@
+# Japanese translations for fdlinecombine package.
+# Copyright (C) 2019 THE fdlinecombine'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the fdlinecombine package.
+# Automatically generated, 2019.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: fdlinecombine\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2019-08-03 14:39+0200\n"
+"PO-Revision-Date: 2019-08-03 14:08+0200\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: ja\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=ASCII\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#: src/fdlinecombine.c:22
+msgid ""
+"Read multiple input streams and multiplex them into stdout.\n"
+"Parameters should be file descriptor numbers or file names\n"
+msgstr ""
+
+#: src/fdlinecombine.c:32
+msgid "Print program version"
+msgstr ""
+
+#: src/fdlinecombine.c:33
+msgid "Give this help list"
+msgstr ""
+
+#: src/fdlinecombine.c:34
+msgid "filename"
+msgstr ""
+
+#: src/fdlinecombine.c:34
+msgid ""
+"fd number of file name to read separator from (default separator is single "
+"newline)."
+msgstr ""
+
+#: src/fdlinecombine.c:35
+msgid "sep"
+msgstr ""
+
+#: src/fdlinecombine.c:35
+msgid "string representing a separator (default separator is single newline)."
+msgstr ""
+
+#: src/fdlinecombine.c:36
+msgid "if set, don't output trailing line without separator at the end."
+msgstr ""
+
+#: src/fdlinecombine.c:142
+#, c-format
+msgid "Out of memory on fd %d\n"
+msgstr ""
+
+#: src/fdlinecombine.c:177
+#, c-format
+msgid ""
+"separator option should be name of file \n"
+"    or file descriptor to read separator value from\n"
+msgstr ""
+
+#: src/fdlinecombine.c:202
+#, c-format
+msgid "Separator is too long. Maximum separator size is 65499 bytes.\n"
+msgstr ""
+
+#: src/fdlinecombine.c:256
+#, c-format
+msgid "All arguments must be file descriptor numbers or file names\n"
+msgstr ""
+
+#: src/fdlinecombine.c:320
+#, c-format
+msgid "Much data: enlarging buffer from %d to %d\n"
+msgstr ""
+
+#. Don't shink-grow-shink-grow the buffer rapidly
+#: src/fdlinecombine.c:332
+#, c-format
+msgid "Little data: shrinking buffer from %d to %d\n"
+msgstr ""
+
+#: src/fdlinecombine.c:402
+#, c-format
+msgid "Long line: enlarging buffer from %d to %d\n"
+msgstr ""

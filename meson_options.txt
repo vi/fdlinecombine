@@ -1,0 +1,4 @@
+option('man',
+       type : 'boolean',
+       value : false,
+       description : 'generate man pages (requires xsltproc)')

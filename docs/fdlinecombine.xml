@@ -1,0 +1,117 @@
+<refentry id="fdlinecombine">
+
+<refentryinfo>
+<title>fdlinecombine</title>
+<productname>fdlinecombine</productname>
+<authorgroup>
+<author>
+<contrib>Developer</contrib>
+<firstname>Alberto</firstname>
+<surname>Fanjul</surname>
+</author>
+<author>
+<contrib>Developer</contrib>
+<firstname>Vitaly</firstname>
+<surname>Shukela</surname>
+</author>
+<author>
+<contrib>Developer</contrib>
+<firstname>Matthew</firstname>
+<surname>Molloy</surname>
+</author>
+</authorgroup>
+</refentryinfo>
+<refmeta>
+<refentrytitle>fdlinecombine</refentrytitle>
+<manvolnum>1</manvolnum>
+<refmiscinfo class="manual">User Commands</refmiscinfo>
+</refmeta>
+
+<refnamediv>
+<refname>fdlinecombine</refname>
+<refpurpose>Read multiple input streams and multiplex them into stdout</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv>
+<cmdsynopsis>
+<command>fdlinecombine</command>
+<arg choice="opt" rep="repeat">OPTION</arg>
+<arg>program</arg>
+</cmdsynopsis>
+</refsynopsisdiv>
+
+<refsect1><title>Description</title>
+<para><command>fdlinecombine</command> is a utility to read multiple input 
+streams and multiplex them into stdout\n"
+</para>
+<para>Parameters should be file descriptor numbers or file names
+</para>
+<para>You can use the <option>-s</option> option, the 
+<option>--separator-from-file</option> option or the 
+<option>--separator</option> option, to change the character or characters 
+to separate lines.
+</para>
+</refsect1>
+
+<refsect1><title>Options</title>
+<variablelist>
+
+<varlistentry>
+<term><option>-?</option>, <option>--help</option></term>
+<listitem><para>
+print help and exit
+</para></listitem>
+</varlistentry>
+
+<varlistentry>
+<term><option>-V</option>, <option>--version</option></term>
+<listitem><para>
+print version information and exit
+</para></listitem>
+</varlistentry>
+
+<varlistentry>
+<term><option>-s</option>, <option>--separator</option></term>
+<listitem><para>
+Sets the string used as separator
+</para></listitem>
+</varlistentry>
+
+<varlistentry>
+<term><option>--no-chopped-data</option></term>
+<listitem><para>
+if set, don't output trailing line without separator at the end
+</para></listitem>
+</varlistentry>
+
+<varlistentry>
+<term><option>--separator-from-file</option></term>
+<listitem><para>
+Read the file separator from filename or file descriptor
+</para></listitem>
+</varlistentry>
+
+</variablelist>
+</refsect1>
+
+<refsect1><title>Examples</title>
+<programlisting>
+   fdlinecombine -s 10 0 5 6 &lt;(echo HEADER; echo ---)
+                 5&lt; &lt;((nc -lp 9979 &lt;/dev/null) \
+                 6&lt; &lt;(perl -e '$|=1; sleep 2 and print \
+                    \"TIMER\\n---\\n\" while true' &lt; /dev/null) \
+                 10&lt; &lt;(printf -- '\\n---\\n') > out 
+</programlisting>
+<para>This will transfer data from stdin, opened TCP port and periodic timer
+to file "out" using "---" line as separator.
+</para>
+</refsect1>
+</refentry>
+
+<!--
+    Environment variables:
+        SEPARATOR - fd number of file name to read separator from 
+              (default separator is single newline)
+        NO_CHOPPED_DATA - if set, don't output trailing line without separator at the end
+
+-->

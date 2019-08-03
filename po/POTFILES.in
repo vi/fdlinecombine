@@ -1,0 +1,7 @@
+# List of source files containing translatable strings.
+
+#source
+src/fdlinecombine.c
+
+#docs
+docs/fdlinecombine.xml

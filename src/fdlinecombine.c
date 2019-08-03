@@ -11,6 +11,84 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
+#include <argp.h>
+#include <stdbool.h>
+#include <libintl.h>
+#include <locale.h>
+
+#define _(msgid) gettext (msgid)
+#define gettext_noop(msgid) (msgid)
+#define N_(msgid) gettext_noop (msgid)
+
+const char *argp_program_version = "fdlinecombine "VERSION;
+const char *argp_program_bug_address = "<albfan@gnome.org>";
+static char doc[] = N_("Read multiple input streams and multiplex them into stdout.\n"
+      "Parameters should be file descriptor numbers or file names\n");
+static char args_doc[] = "fd1 fd2 ... fdN";
+
+enum {
+    ARG_SEP_FROM_FILE = 0x100,
+    ARG_NO_CHOP
+};
+
+static struct argp_option options[] = {
+    {"version", 'v', 0, 0,  N_("Print program version"), -1},
+    {"help", 'h', 0, 0,  N_("Give this help list"), -1},
+    { "separator-from-file", ARG_SEP_FROM_FILE, N_("filename"), 0, N_("fd number of file name to read separator from (default separator is single newline)."), -1},
+    { "separator", 's', N_("sep"), 0, N_("string representing a separator (default separator is single newline)."), -1},
+    { "no-chopped", ARG_NO_CHOP, 0, 0, N_("if set, don't output trailing line without separator at the end."), -1},
+    { 0 }
+};
+
+struct arguments {
+    char *separator_from_file;
+    char *separator;
+    bool chopped_mode;
+    char **args;
+    int num_args;
+};
+
+static error_t parse_opt(int key, char *arg, struct argp_state *state) {
+    struct arguments *arguments = state->input;
+    switch (key) {
+    case 'v':
+        fprintf (state->out_stream, "%s\n", argp_program_version);
+        exit(0);
+        break;
+    case 'h':
+        argp_state_help(state, stderr, ARGP_HELP_STD_HELP | ARGP_HELP_EXIT_OK);
+        break;
+    case 's':
+        arguments->separator = arg;
+        break;
+    case ARG_SEP_FROM_FILE:
+        arguments->separator_from_file = arg;
+        break;
+    case ARG_NO_CHOP:
+        arguments->chopped_mode = false;
+        break;
+    case ARGP_KEY_ARG:
+        return ARGP_ERR_UNKNOWN;
+    case ARGP_KEY_ARGS:
+        arguments->args = state->argv + state->next;
+        arguments->num_args = state->argc - state->next;
+        state->next = state->argc;
+        break;
+    case ARGP_KEY_INIT:
+        break;
+    case ARGP_KEY_END:
+        break;
+    case ARGP_KEY_NO_ARGS:
+        fprintf(stderr, "Too few arguments!\n");
+        argp_usage(state);
+        break;
+    default:
+        return ARGP_ERR_UNKNOWN;
+    }
+    return 0;
+}
+
+static struct argp argp = { options, parse_opt, args_doc, doc, 0, 0, 0 };
 
 //#define dbgprintf fprintf
 #define dbgprintf(...)
@@ -30,7 +108,7 @@ struct fdinfo {
     int fd;
 
     /* Increases when too little data received. Decreases when full buffer of data received. */
-    int little_data_hyster; 
+    int little_data_hyster;
 };
 
 struct fdinfo* fds;
@@ -54,7 +132,7 @@ void closefd(struct fdinfo* f) {
 
 char* realloc_buffer(struct fdinfo* f, int newsize, int obligatory) {
     char* buffer;
-    
+
     if(newsize<DEFAULT_READ_SIZE) {
         /* Integer overflow? */
         buffer=NULL;
@@ -64,11 +142,11 @@ char* realloc_buffer(struct fdinfo* f, int newsize, int obligatory) {
 
     if(!buffer) {
         if(obligatory) {
-            fprintf(stderr, "Out of memory on fd %d\n", f->fd);
+            fprintf(stderr, _("Out of memory on fd %d\n"), f->fd);
             fflush(stderr);
-        
+
             /* refusing to reallocate, returning the old buffer */
-        
+
             f->bufsize=-1;
         } else {
             /* Can't reallocate, but don't really need to. Just leave the buffer as it was. */
@@ -99,8 +177,8 @@ void read_separator(const char* sepenv) {
             if ( errno==EINTR || errno==EAGAIN ) goto open_again;
             fprintf(stderr, "%s ", sepenv);
             perror("open");
-            fprintf(stderr, "SEPARATOR environment variable should be \n"
-                    "    name of file or file descriptor to read separator value from\n");
+            fprintf(stderr, _("separator option should be name of file \n"
+                  "    or file descriptor to read separator value from\n"));
             exit(2);
         }
     }
@@ -124,7 +202,7 @@ void read_separator(const char* sepenv) {
         }
         ret = fread(separator+1024, 1, 65500-1024, f);
         if(ret == 65500-1024) {
-            fprintf(stderr, "Separator is too long. Maximum separator size is 65499 bytes.");
+            fprintf(stderr, _("Separator is too long. Maximum separator size is 65499 bytes.\n"));
             exit(3);
         }
         separator_length+=ret;
@@ -139,52 +217,46 @@ int main(int argc, char* argv[]) {
     int ret;
     int maxfd;
 
-    const char* sepenv = getenv("SEPARATOR");
+    struct arguments arguments;
+
+    setlocale (LC_ALL, "");
+    bindtextdomain (GETTEXT_PACKAGE, LOCALE_DIR);
+    bindtextdomain ("libc", "/usr/share/locale/");
+    textdomain ("libc");
+
+    arguments.separator = separator;
+    arguments.chopped_mode = true;
+
+    argp_parse(&argp, argc, argv, ARGP_NO_HELP, 0, &arguments);
+
+    separator = arguments.separator;
+
+    const char* sepenv = arguments.separator_from_file;
     if(sepenv) {
         read_separator(sepenv);
     }
 
-    no_chopped_data = getenv("NO_CHOPPED_DATA") ? 1 : 0;
+    no_chopped_data = arguments.chopped_mode ? 0 : 1;
 
-    if (argc <= 1) {
-        fprintf(stderr, 
-                "Usage: fdlinecombine fd1 fd2 ... fdN\n"
-                "    Read multiple input streams and multiplex them into stdout\n"
-                "    Parameters should be file descriptor numbers or file names\n"
-                "\n"
-                "    Environment variables:\n"
-                "    SEPARATOR - fd number of file name to read separator from (default separator is single newline)\n"
-                "    NO_CHOPPED_DATA - if set, don't output trailing line without separator at the end\n"
-                "    \n"
-                "    Advanced example (bash):\n"
-                "    SEPARATOR=10   ./fdlinecombine 0 5 6 <(echo HEADER; echo ---) \\\n"
-                "           5< <(nc -lp 9979 < /dev/null)   \\\n"
-                "           6< <(perl -e '$|=1; sleep 2 and print \"TIMER\\n---\\n\" while true' < /dev/null) \\\n"
-                "           10< <(printf -- '\\n---\\n') > out \n"
-                "    This will transfer data from stdin, opened TCP port and periodic timer\n"
-                "    to file \"out\" using \"---\" line as separator.\n"
-                );
-        return 0; /* No fds (therefore no output) is correct degenerate case */
-    }
-
-    numfds = argc-1;
+    numfds = arguments.num_args;
     num_active_fds = numfds;
-    fds = (struct fdinfo*) malloc(numfds*sizeof(*fds));
-    if (fds==NULL) {
+    fds = (struct fdinfo*) malloc (numfds * sizeof (*fds));
+    if (fds == NULL) {
         perror("malloc");
         return 1;
     }
 
-    for(i=1; i<argc; ++i) {
-        struct fdinfo* f = fds+(i-1);
-        if(!sscanf(argv[i], "%i", &f->fd)) {
+    for(i=0; i < numfds; ++i) {
+        struct fdinfo* f = fds+i;
+        char* a = arguments.args[i];
+        if(!sscanf(a, "%i", &f->fd)) {
             open_again:
-            f->fd = open(argv[i], O_RDONLY, 0022);
+            f->fd = open(a, O_RDONLY, 0022);
             if(f->fd == -1) {
                 if ( errno==EINTR || errno==EAGAIN ) goto open_again;
-                fprintf(stderr, "%s ", argv[i]);
+                fprintf(stderr, "%s ", a);
                 perror("open");
-                fprintf(stderr, "All arguments must be file descriptor numbers or file names\n");
+                fprintf(stderr, _("All arguments must be file descriptor numbers or file names\n"));
                 return 2;
             }
         }
@@ -248,21 +320,21 @@ int main(int argc, char* argv[]) {
                 /* Don't enlarge buffer just to read more than megabyte chunks */
                 /* Also don't enlarge buffer here upon the first request - enlarge if it is trend */
                 if(ret < 1024*1024 && f->little_data_hyster<-3) {
-                    dbgprintf(stderr, "Much data: enlarging buffer from %d to %d\n", f->bufsize, f->bufsize*2);
-                    buffer = realloc_buffer(f, f->bufsize*2, 0); 
+                    dbgprintf(stderr, _("Much data: enlarging buffer from %d to %d\n"), f->bufsize, f->bufsize*2);
+                    buffer = realloc_buffer(f, f->bufsize*2, 0);
                 }
             } else {
                 if (f->little_data_hyster<0) f->little_data_hyster=0;
             }
-            
+
             /* Buffer is too large - can shrink */
             if ( (ret < (f->bufsize - offset)/4) && (f->bufsize>DEFAULT_READ_SIZE*2) ) {
                 if (offset < DEFAULT_READ_SIZE) { // Don't shrink if it is just a looong line
                     ++f->little_data_hyster;
                     if(f->little_data_hyster>5) { // Don't shink-grow-shink-grow the buffer rapidly
-                        dbgprintf(stderr, "Little data: shrinking buffer from %d to %d\n", 
+                        dbgprintf(stderr, _("Little data: shrinking buffer from %d to %d\n"),
                                 f->bufsize, offset+ret+DEFAULT_READ_SIZE);
-                        buffer = realloc_buffer(f, offset+ret+DEFAULT_READ_SIZE, 0); 
+                        buffer = realloc_buffer(f, offset+ret+DEFAULT_READ_SIZE, 0);
                     }
                 }
             } else {
@@ -330,8 +402,8 @@ int main(int argc, char* argv[]) {
              *     (used if too long lines)
              */
             if(f->bufsize - offset < DEFAULT_READ_SIZE && f->bufsize>0) {
-                dbgprintf(stderr, "Long line: enlarging buffer from %d to %d\n", f->bufsize, f->bufsize * 2);
-                buffer = realloc_buffer(f, f->bufsize * 2, 1); 
+                dbgprintf(stderr, _("Long line: enlarging buffer from %d to %d\n"), f->bufsize, f->bufsize * 2);
+                buffer = realloc_buffer(f, f->bufsize * 2, 1);
             }
 
             if (f->bufsize==-1) {
